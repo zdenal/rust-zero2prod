@@ -23,10 +23,12 @@ async fn main() -> Result<(), std::io::Error> {
     //set_global_default(subscriber).expect("Failed to set log subscriber");
 
     let configuration = get_configuration().expect("Failed to load configuration.yaml");
-    let pg_pool = PgPool::connect(configuration.database.connection_string().expose_secret())
-        .await
+    let pg_pool = PgPool::connect_lazy(configuration.database.connection_string().expose_secret())
         .expect("Fail to connect DB.");
-    let address = format!("127.0.0.1:{}", configuration.application_port);
+    let address = format!(
+        "{}:{}",
+        configuration.application.host, configuration.application.port
+    );
     let listener = TcpListener::bind(address)?;
     //sqlx::migrate!().run(<&your_pool OR &mut your_connection>).await?
     run(listener, pg_pool)?.await
