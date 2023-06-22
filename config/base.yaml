@@ -6,3 +6,4 @@ database:
   username: "postgres"
   password: "postgres"
   database_name: "zero2prod"
+  require_ssl: false
