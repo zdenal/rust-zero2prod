@@ -34,9 +34,29 @@ impl NewSubscriber {
 #[cfg(test)]
 mod tests {
     use claims::assert_ok;
+    use fake::{faker::internet::en::SafeEmail, Fake};
+    use rand::SeedableRng;
     use validator::ValidationErrors;
 
     use crate::domains::subscriber::NewSubscriber;
+
+    #[derive(Debug, Clone)]
+    struct ValidEmailFixture(pub String);
+
+    impl quickcheck::Arbitrary for ValidEmailFixture {
+        fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+            //let mut rng = rand::rngs::std::StdRng::seed_from_u64(u64::arbitrary(g));
+            let mut rng = rand::rngs::StdRng::seed_from_u64(u64::arbitrary(g));
+
+            Self(SafeEmail().fake_with_rng(&mut rng))
+        }
+    }
+
+    impl AsRef<str> for ValidEmailFixture {
+        fn as_ref(&self) -> &str {
+            &self.0
+        }
+    }
 
     #[test]
     fn valid_case() {
@@ -71,5 +91,10 @@ mod tests {
                 assert!(!ValidationErrors::has_error(&Err(e), "name"));
             }
         }
+    }
+
+    #[quickcheck_macros::quickcheck]
+    fn property_test_on_email(valid_email: ValidEmailFixture) -> bool {
+        NewSubscriber::parse("name", valid_email.as_ref()).is_ok()
     }
 }
