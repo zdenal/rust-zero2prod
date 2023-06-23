@@ -73,7 +73,25 @@ async fn subscriptions_works(pool: Pool<Postgres>) {
 }
 
 #[sqlx::test]
-async fn subscriptions_doesnt_works(pool: Pool<Postgres>) {
+async fn subscriptions_doesnt_works_by_invalid_fields(pool: Pool<Postgres>) {
+    let app = spawn_app(pool.clone()).await;
+    let client = reqwest::Client::new();
+    let params = HashMap::from([("name", ""), ("email", "le_guin@email.com")]);
+
+    let response = client
+        .post(format!("{}/subscriptions", app.address))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .form(&params)
+        .send()
+        .await
+        .expect("Failed to request endpoint.");
+
+    assert!(response.status().is_client_error());
+    assert_eq!(response.content_length(), Some(0));
+}
+
+#[sqlx::test]
+async fn subscriptions_doesnt_works_by_missing_fields(pool: Pool<Postgres>) {
     let app = spawn_app(pool).await;
     let client = reqwest::Client::new();
     let params = [
