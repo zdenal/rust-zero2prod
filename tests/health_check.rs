@@ -3,6 +3,8 @@ use reqwest::header::CONTENT_TYPE;
 use sqlx::{Pool, Postgres};
 use std::{collections::HashMap, net::TcpListener};
 use zero2prod::{
+    configuration::get_configuration,
+    email_client::EmailClient,
     startup::run,
     telemetry::{get_subscriber, init_subscriber},
 };
@@ -25,11 +27,18 @@ pub struct TestApp {
 async fn spawn_app(pool: Pool<Postgres>) -> TestApp {
     Lazy::force(&TRACING);
 
+    let configuration = get_configuration().expect("Get configuration failed.");
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind listener.");
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{}", port);
+    let email_client = EmailClient::new(
+        configuration.email_client.base_url,
+        configuration.email_client.sender,
+        configuration.email_client.timeout_milliseconds,
+        configuration.email_client.token,
+    );
 
-    let server = run(listener, pool.clone()).expect("Failed to bind address");
+    let server = run(listener, pool.clone(), email_client).expect("Failed to bind address");
     tokio::spawn(server);
 
     TestApp { address }

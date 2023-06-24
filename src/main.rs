@@ -3,6 +3,7 @@ use std::net::TcpListener;
 use dotenv::dotenv;
 use sqlx::PgPool;
 use zero2prod::configuration::get_configuration;
+use zero2prod::email_client::EmailClient;
 use zero2prod::startup::run;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
@@ -28,6 +29,12 @@ async fn main() -> Result<(), std::io::Error> {
         configuration.application.host, configuration.application.port
     );
     let listener = TcpListener::bind(address)?;
+    let email_client = EmailClient::new(
+        configuration.email_client.base_url,
+        configuration.email_client.sender,
+        configuration.email_client.timeout_milliseconds,
+        configuration.email_client.token,
+    );
     //sqlx::migrate!().run(<&your_pool OR &mut your_connection>).await?
-    run(listener, pg_pool)?.await
+    run(listener, pg_pool, email_client)?.await
 }
