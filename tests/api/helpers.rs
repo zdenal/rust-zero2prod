@@ -1,5 +1,6 @@
 use once_cell::sync::Lazy;
 use sqlx::{Pool, Postgres};
+use wiremock::MockServer;
 use zero2prod::{
     configuration::get_configuration,
     startup::build,
@@ -17,20 +18,26 @@ static TRACING: Lazy<()> = Lazy::new(|| {
     //let subscriber = get_subscriber("test".into(), "debug".into(), std::io::stdout);
 });
 
-#[derive(Debug)]
 pub struct TestApp {
     pub address: String,
+    pub email_client: MockServer,
 }
 
 pub async fn spawn_app(pool: Pool<Postgres>) -> TestApp {
-    std::env::set_var("APP_APPLICATION__PORT", "0");
     Lazy::force(&TRACING);
+    let email_client = MockServer::start().await;
 
+    std::env::set_var("APP_APPLICATION__PORT", "0");
+    std::env::set_var("APP_EMAIL_CLIENT__BASE_URL", email_client.uri());
     let configuration = get_configuration().expect("Failed to load configuration.yaml");
+
     let (server, address) = build(pool.clone(), configuration).expect("Failed to start app.");
     tokio::spawn(server);
 
+    let email_client = MockServer::start().await;
+
     TestApp {
         address: format!("http://{}", address),
+        email_client,
     }
 }

@@ -11,12 +11,12 @@ pub struct EmailClient {
 }
 
 #[derive(serde::Serialize)]
-struct SendEmailRequest {
-    from: String,
-    to: String,
-    subject: String,
-    html: String,
-    text: String,
+struct SendEmailRequest<'a> {
+    from: &'a str,
+    to: &'a str,
+    subject: &'a str,
+    html: &'a str,
+    text: &'a str,
 }
 
 impl EmailClient {
@@ -36,19 +36,13 @@ impl EmailClient {
         }
     }
 
-    pub async fn send_email(
-        &self,
-        to: String,
-        subject: String,
-        html: String,
-        text: String,
-    ) -> Result<()> {
+    pub async fn send_email(&self, to: &str, subject: &str, html: &str, text: &str) -> Result<()> {
         let request = SendEmailRequest {
-            from: self.sender.to_owned(),
-            to,
-            subject,
-            html,
-            text,
+            from: &self.sender,
+            to: &to,
+            subject: &subject,
+            html: &html,
+            text: &text,
         };
 
         let _res = self
