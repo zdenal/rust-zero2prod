@@ -1,10 +1,8 @@
 use once_cell::sync::Lazy;
 use sqlx::{Pool, Postgres};
-use std::net::TcpListener;
 use zero2prod::{
     configuration::get_configuration,
-    email_client::EmailClient,
-    startup::run,
+    startup::build,
     telemetry::{get_subscriber, init_subscriber},
 };
 
@@ -19,26 +17,20 @@ static TRACING: Lazy<()> = Lazy::new(|| {
     //let subscriber = get_subscriber("test".into(), "debug".into(), std::io::stdout);
 });
 
+#[derive(Debug)]
 pub struct TestApp {
     pub address: String,
 }
 
 pub async fn spawn_app(pool: Pool<Postgres>) -> TestApp {
+    std::env::set_var("APP_APPLICATION__PORT", "0");
     Lazy::force(&TRACING);
 
-    let configuration = get_configuration().expect("Get configuration failed.");
-    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind listener.");
-    let port = listener.local_addr().unwrap().port();
-    let address = format!("http://127.0.0.1:{}", port);
-    let email_client = EmailClient::new(
-        configuration.email_client.base_url,
-        configuration.email_client.sender,
-        configuration.email_client.timeout_milliseconds,
-        configuration.email_client.token,
-    );
-
-    let server = run(listener, pool.clone(), email_client).expect("Failed to bind address");
+    let configuration = get_configuration().expect("Failed to load configuration.yaml");
+    let (server, address) = build(pool.clone(), configuration).expect("Failed to start app.");
     tokio::spawn(server);
 
-    TestApp { address }
+    TestApp {
+        address: format!("http://{}", address),
+    }
 }
