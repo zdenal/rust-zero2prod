@@ -26,15 +26,14 @@ pub struct TestApp {
 pub async fn spawn_app(pool: Pool<Postgres>) -> TestApp {
     Lazy::force(&TRACING);
     let email_client = MockServer::start().await;
+    let email_base_url = email_client.uri();
 
     std::env::set_var("APP_APPLICATION__PORT", "0");
-    std::env::set_var("APP_EMAIL_CLIENT__BASE_URL", email_client.uri());
+    std::env::set_var("APP_EMAIL_CLIENT__BASE_URL", &email_base_url);
     let configuration = get_configuration().expect("Failed to load configuration.yaml");
 
     let (server, address) = build(pool.clone(), configuration).expect("Failed to start app.");
     tokio::spawn(server);
-
-    let email_client = MockServer::start().await;
 
     TestApp {
         address: format!("http://{}", address),

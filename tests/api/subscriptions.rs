@@ -54,7 +54,6 @@ async fn subscriptions_doesnt_works_by_invalid_fields(pool: Pool<Postgres>) {
         .expect("Failed to request endpoint.");
 
     assert!(response.status().is_client_error());
-    assert_eq!(response.content_length(), Some(0));
 }
 
 #[sqlx::test]

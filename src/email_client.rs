@@ -3,6 +3,7 @@ use std::time::Duration;
 use reqwest::Result;
 use secrecy::{ExposeSecret, Secret};
 
+#[derive(Debug)]
 pub struct EmailClient {
     http_client: reqwest::Client,
     base_url: String,
@@ -11,12 +12,12 @@ pub struct EmailClient {
 }
 
 #[derive(serde::Serialize)]
-struct SendEmailRequest<'a> {
-    from: &'a str,
-    to: &'a str,
-    subject: &'a str,
-    html: &'a str,
-    text: &'a str,
+struct SendEmailRequest<T: AsRef<str>> {
+    from: T,
+    to: T,
+    subject: T,
+    html: T,
+    text: T,
 }
 
 impl EmailClient {
@@ -37,12 +38,12 @@ impl EmailClient {
     }
 
     pub async fn send_email(&self, to: &str, subject: &str, html: &str, text: &str) -> Result<()> {
-        let request = SendEmailRequest {
+        let request = SendEmailRequest::<&str> {
             from: &self.sender,
-            to: &to,
-            subject: &subject,
-            html: &html,
-            text: &text,
+            to,
+            subject,
+            html,
+            text,
         };
 
         let _res = self
@@ -86,7 +87,7 @@ mod test {
             .await;
 
         let res = client
-            .send_email(request.to, request.subject, request.html, request.text)
+            .send_email(&request.to, &request.subject, &request.html, &request.text)
             .await;
 
         assert_ok!(res);
@@ -109,7 +110,7 @@ mod test {
             .await;
 
         let res = client
-            .send_email(request.to, request.subject, request.html, request.text)
+            .send_email(&request.to, &request.subject, &request.html, &request.text)
             .await;
 
         assert_err!(res);
@@ -133,13 +134,13 @@ mod test {
             .await;
 
         let res = client
-            .send_email(request.to, request.subject, request.html, request.text)
+            .send_email(&request.to, &request.subject, &request.html, &request.text)
             .await;
 
         assert_err!(res);
     }
 
-    fn get_send_email_request(client: &EmailClient) -> SendEmailRequest {
+    fn get_send_email_request(client: &EmailClient) -> SendEmailRequest<String> {
         SendEmailRequest {
             from: client.sender.clone(),
             to: SafeEmail().fake(),
