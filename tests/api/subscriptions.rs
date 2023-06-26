@@ -28,15 +28,41 @@ async fn subscriptions_works(pool: Pool<Postgres>) {
         .await
         .expect("Failed to request endpoint.");
 
+    let email_request = &app.email_client.received_requests().await.unwrap()[0];
+
+    let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
+
+    let get_link = |s: &str| {
+        let links: Vec<linkify::Link<'_>> = linkify::LinkFinder::new()
+            .links(s)
+            .filter(|link| *link.kind() == linkify::LinkKind::Url)
+            .collect();
+        assert_eq!(links.len(), 1);
+        links[0].as_str().to_owned()
+    };
+
+    let html_link = get_link(&body["html"].to_string());
+    let text_link = get_link(&body["text"].to_string());
+    assert_eq!(html_link, text_link);
+
     assert!(response.status().is_success());
     assert_eq!(response.content_length(), Some(0));
 
-    let saved = sqlx::query!("select name, email from subscriptions")
+    let conf_link_response = client
+        .get(&html_link)
+        .send()
+        .await
+        .expect("Conf link request failed.");
+    assert!(conf_link_response.status().is_success());
+
+    let saved = sqlx::query!("select name, email, status, confirmation_token from subscriptions")
         .fetch_one(&pool)
         .await
         .unwrap();
     assert_eq!(&saved.name, params.get("name").unwrap());
     assert_eq!(&saved.email, params.get("email").unwrap());
+    assert_eq!(&saved.status, "pending_confirmation");
+    assert_ne!(saved.confirmation_token.len(), 0);
 }
 
 #[sqlx::test]
