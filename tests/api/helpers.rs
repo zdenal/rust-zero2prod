@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use once_cell::sync::Lazy;
+use reqwest::{header::CONTENT_TYPE, Response};
 use sqlx::{Pool, Postgres};
 use wiremock::MockServer;
 use zero2prod::{
@@ -39,4 +42,15 @@ pub async fn spawn_app(pool: Pool<Postgres>) -> TestApp {
         address: format!("http://{}", address),
         email_client,
     }
+}
+
+pub async fn post_subscription(params: &HashMap<&str, &str>, base_url: &str) -> Response {
+    let client = reqwest::Client::new();
+    client
+        .post(format!("{}/subscriptions", base_url))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .form(&params)
+        .send()
+        .await
+        .expect("Failed to request endpoint.")
 }

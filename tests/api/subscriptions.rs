@@ -1,11 +1,10 @@
-use std::collections::HashMap;
-
 use reqwest::header::CONTENT_TYPE;
 use sqlx::{Pool, Postgres};
+use std::collections::HashMap;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 
-use crate::helpers::spawn_app;
+use crate::helpers::{post_subscription, spawn_app};
 
 #[sqlx::test]
 async fn subscriptions_works(pool: Pool<Postgres>) {
@@ -20,13 +19,16 @@ async fn subscriptions_works(pool: Pool<Postgres>) {
         .mount(&app.email_client)
         .await;
 
-    let response = client
-        .post(format!("{}/subscriptions", app.address))
-        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
-        .form(&params)
-        .send()
+    let response = post_subscription(&params, &app.address).await;
+
+    let saved = sqlx::query!("select name, email, status, confirmation_token from subscriptions")
+        .fetch_one(&pool)
         .await
-        .expect("Failed to request endpoint.");
+        .unwrap();
+    assert_eq!(&saved.name, params.get("name").unwrap());
+    assert_eq!(&saved.email, params.get("email").unwrap());
+    assert_eq!(&saved.status, "pending_confirmation");
+    assert_ne!(saved.confirmation_token.len(), 0);
 
     let email_request = &app.email_client.received_requests().await.unwrap()[0];
 
@@ -59,10 +61,7 @@ async fn subscriptions_works(pool: Pool<Postgres>) {
         .fetch_one(&pool)
         .await
         .unwrap();
-    assert_eq!(&saved.name, params.get("name").unwrap());
-    assert_eq!(&saved.email, params.get("email").unwrap());
-    assert_eq!(&saved.status, "pending_confirmation");
-    assert_ne!(saved.confirmation_token.len(), 0);
+    assert_eq!(&saved.status, "confirmed");
 }
 
 #[sqlx::test]
