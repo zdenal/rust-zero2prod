@@ -1,5 +1,7 @@
-use actix_web::{error, HttpRequest};
 use actix_web::{web, HttpResponse};
+use actix_web::{HttpRequest, ResponseError};
+use anyhow::Context;
+use reqwest::StatusCode;
 use sqlx::{types::chrono::Utc, PgPool};
 use uuid::Uuid;
 
@@ -11,6 +13,24 @@ pub struct FormData {
     email: String,
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error(transparent)]
+    ValidationErrors(#[from] validator::ValidationErrors),
+    #[error(transparent)]
+    UnexpectedError(#[from] anyhow::Error),
+}
+
+impl ResponseError for Error {
+    fn status_code(&self) -> reqwest::StatusCode {
+        use Error::*;
+        match *self {
+            ValidationErrors(_) => StatusCode::BAD_REQUEST,
+            UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
 //#[post("/subscriptions")]
 #[tracing::instrument(name = "Reaching a new subscriber endpoint", skip(pool, email_client))]
 pub async fn subscribe(
@@ -18,18 +38,17 @@ pub async fn subscribe(
     pool: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
     req: HttpRequest,
-) -> actix_web::Result<HttpResponse> {
-    let subscriber = NewSubscriber::parse(&form.name, &form.email)
-        .map_err(|_| error::ErrorBadRequest("invalid params"))?;
+) -> Result<HttpResponse, Error> {
+    let subscriber = NewSubscriber::parse(&form.name, &form.email)?;
     let conf_token = Uuid::new_v4().to_string();
 
     insert_subscriber(&subscriber, &conf_token, &pool)
         .await
-        .map_err(|_| error::ErrorInternalServerError("failed to insert to DB"))?;
+        .context("Failed to insert subscriber.")?;
 
     send_email(subscriber.email(), email_client, req, &conf_token)
         .await
-        .map_err(|_| error::ErrorInternalServerError("failed to send email"))?;
+        .context("Failed to send confirmation email.")?;
 
     Ok(HttpResponse::Ok().into())
 }

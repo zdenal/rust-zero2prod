@@ -12,6 +12,7 @@ path = "src/lib.rs"
 
 [dependencies]
 actix-web = "4.3.1"
+anyhow = "1.0.71"
 config = "0.13.3"
 derive-getters = "0.3.0"
 dotenv = "0.15.0"
@@ -23,6 +24,7 @@ secrecy = { version = "0.8.0", features = ["serde"] }
 serde = { version = "1.0.164", features = ["derive"] }
 serde-aux = "4.2.0"
 serde_json = "1.0.99"
+thiserror = "1.0.40"
 tokio = { version = "1.28.2", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.37"
 tracing-actix-web = "0.7.5"
