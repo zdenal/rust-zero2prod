@@ -1,8 +1,6 @@
 use reqwest::header::CONTENT_TYPE;
 use sqlx::{Pool, Postgres};
 use std::collections::HashMap;
-use wiremock::matchers::{method, path};
-use wiremock::{Mock, ResponseTemplate};
 
 use crate::helpers::{post_subscription, spawn_app};
 
@@ -12,14 +10,7 @@ async fn subscriptions_works(pool: Pool<Postgres>) {
     let client = reqwest::Client::new();
     let params = HashMap::from([("name", "le guin"), ("email", "le_guin@email.com")]);
 
-    Mock::given(path("/email"))
-        .and(method("POST"))
-        .respond_with(ResponseTemplate::new(200))
-        .expect(1)
-        .mount(&app.email_client)
-        .await;
-
-    let response = post_subscription(&params, &app.address).await;
+    let response = post_subscription(&params, &app).await;
 
     let saved = sqlx::query!("select name, email, status, confirmation_token from subscriptions")
         .fetch_one(&pool)

@@ -2,9 +2,10 @@ use actix_web::{web, HttpResponse};
 use actix_web::{HttpRequest, ResponseError};
 use anyhow::Context;
 use reqwest::StatusCode;
-use sqlx::{types::chrono::Utc, PgPool};
+use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::domains::subscribers::insert_subscriber;
 use crate::{domains::subscriber::NewSubscriber, email_client::EmailClient};
 
 #[derive(serde::Deserialize, Debug)]
@@ -73,30 +74,4 @@ async fn send_email(
             &format!("Welcome to our newsletter! Visit {} to confirm your subscription.", &confirmation_link),
         )
         .await
-}
-
-#[tracing::instrument(name = "Saving a new subscriber", skip(pool))]
-async fn insert_subscriber(
-    subscriber: &NewSubscriber,
-    conf_token: &str,
-    pool: &PgPool,
-) -> sqlx::Result<()> {
-    sqlx::query!(
-        r#"
-    INSERT INTO subscriptions (id, email, name, confirmation_token, subscribed_at, status)
-    VALUES ($1, $2, $3, $4, $5, 'pending_confirmation')
-            "#,
-        Uuid::new_v4(),
-        subscriber.email(),
-        subscriber.name(),
-        conf_token,
-        Utc::now()
-    )
-    .execute(pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Error from saving new subscriber {:?}", e);
-        e
-    })?;
-    Ok(())
 }

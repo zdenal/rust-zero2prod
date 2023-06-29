@@ -1,4 +1,5 @@
 use derive_getters::Getters;
+use sqlx::PgPool;
 use validator::{Validate, ValidationError, ValidationErrors};
 
 fn is_valid_name(name: &str) -> Result<(), ValidationError> {

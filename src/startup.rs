@@ -7,7 +7,7 @@ use tracing_actix_web::TracingLogger;
 
 use crate::configuration::Settings;
 use crate::email_client::EmailClient;
-use crate::routes::{confirm, health_check, subscribe};
+use crate::routes::{confirm, health_check, post_newsletter, subscribe};
 
 pub fn build(pool: Pool<Postgres>, configuration: Settings) -> std::io::Result<(Server, String)> {
     let address = format!(
@@ -47,6 +47,7 @@ fn run(
             .wrap(TracingLogger::default())
             .route("/health_check", web::get().to(health_check))
             .route("/subscriptions", web::post().to(subscribe))
+            .route("/newsletters", web::post().to(post_newsletter))
             .service(
                 web::resource("/subscriptions/confirm")
                     .name("confirm")

@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use once_cell::sync::Lazy;
 use reqwest::{header::CONTENT_TYPE, Response};
 use sqlx::{Pool, Postgres};
-use wiremock::MockServer;
+use wiremock::{
+    matchers::{method, path},
+    Mock, MockServer, ResponseTemplate,
+};
 use zero2prod::{
     configuration::get_configuration,
     startup::build,
@@ -44,10 +47,17 @@ pub async fn spawn_app(pool: Pool<Postgres>) -> TestApp {
     }
 }
 
-pub async fn post_subscription(params: &HashMap<&str, &str>, base_url: &str) -> Response {
-    let client = reqwest::Client::new();
-    client
-        .post(format!("{}/subscriptions", base_url))
+pub async fn post_subscription(params: &HashMap<&str, &str>, app: &TestApp) -> Response {
+    let _mock_guard = Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .named("Confirmation email mock")
+        .mount_as_scoped(&app.email_client)
+        .await;
+
+    reqwest::Client::new()
+        .post(format!("{}/subscriptions", &app.address))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .form(&params)
         .send()
