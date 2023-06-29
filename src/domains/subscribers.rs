@@ -44,9 +44,9 @@ pub async fn confirm_subscriber(token: &str, pool: &PgPool) -> sqlx::Result<()> 
     Ok(())
 }
 
-pub async fn get_confirmed_subscriber_emails<'a>(pool: PgPool) -> sqlx::Result<Vec<String>> {
+pub async fn get_confirmed_subscriber_emails<'a>(pool: &PgPool) -> sqlx::Result<Vec<String>> {
     let res = sqlx::query!(r#"select email from subscriptions where status = 'confirmed'"#)
-        .fetch_all(&pool)
+        .fetch_all(pool)
         .await?
         .into_iter()
         .map(|s| s.email)
