@@ -12,7 +12,9 @@ path = "src/lib.rs"
 
 [dependencies]
 actix-web = "4.3.1"
+actix-web-httpauth = "0.8.0"
 anyhow = "1.0.71"
+argonautica = "0.2.0"
 config = "0.13.3"
 derive-getters = "0.3.0"
 dotenv = "0.15.0"
