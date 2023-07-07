@@ -1,3 +1,9 @@
+## Why
+
+To get more faimiliar with Rust language and stuff around like dockering application, CI, better error handling and so.
+
+Based on this book: https://www.zero2prod.com/
+
 ## SQLX
 
 To be able build docker image w/ release we need to have
