@@ -2,13 +2,14 @@ use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
 use reqwest::{header::CONTENT_TYPE, Response};
-use sqlx::{Pool, Postgres};
+use sqlx::{PgPool, Pool, Postgres};
 use wiremock::{
     matchers::{method, path},
     Mock, MockServer, ResponseTemplate,
 };
 use zero2prod::{
-    configuration::get_configuration,
+    configuration::{get_configuration, ApplicationSettings},
+    domains::users,
     startup::build,
     telemetry::{get_subscriber, init_subscriber},
 };
@@ -27,6 +28,7 @@ static TRACING: Lazy<()> = Lazy::new(|| {
 pub struct TestApp {
     pub address: String,
     pub email_client: MockServer,
+    pub app_settings: ApplicationSettings,
 }
 
 pub async fn spawn_app(pool: Pool<Postgres>) -> TestApp {
@@ -37,6 +39,7 @@ pub async fn spawn_app(pool: Pool<Postgres>) -> TestApp {
     std::env::set_var("APP_APPLICATION__PORT", "0");
     std::env::set_var("APP_EMAIL_CLIENT__BASE_URL", &email_base_url);
     let configuration = get_configuration().expect("Failed to load configuration.yaml");
+    let app_settings = configuration.application.clone();
 
     let (server, address) = build(pool.clone(), configuration).expect("Failed to start app.");
     tokio::spawn(server);
@@ -44,7 +47,17 @@ pub async fn spawn_app(pool: Pool<Postgres>) -> TestApp {
     TestApp {
         address: format!("http://{}", address),
         email_client,
+        app_settings,
     }
+}
+
+pub async fn create_user(
+    password: &str,
+    hash_secret: &str,
+    pool: &PgPool,
+) -> sqlx::Result<users::User> {
+    let user = users::NewUser::parse("tom", password, hash_secret).unwrap();
+    users::add_user(user, pool).await
 }
 
 pub async fn post_subscription(params: &HashMap<&str, &str>, app: &TestApp) -> Response {

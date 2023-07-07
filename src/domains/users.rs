@@ -4,9 +4,9 @@ use validator::{Validate, ValidationErrors};
 
 #[derive(serde::Serialize, FromRow, Debug)]
 pub struct User {
-    id: i32,
-    username: String,
-    password_hash: String,
+    pub id: i32,
+    pub username: String,
+    pub password_hash: String,
 }
 
 //fn is_valid_password(password: &Secret<String>) -> Result<(), ValidationError> {
